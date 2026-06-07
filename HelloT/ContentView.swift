@@ -148,13 +148,15 @@ struct TabButton: View {
             .foregroundColor(selected ? cityAccents[0] : (isDarkMode ? .gray : .gray))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(
-                selected
-                    ? RoundedRectangle(cornerRadius: 12)
+            .background {
+                if selected {
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(bgColor)
                         .neuInset(isDark: isDarkMode, radius: 4, offset: 3)
-                    : Color.clear
-            )
+                } else {
+                    Color.clear
+                }
+            }
         }
     }
 }
