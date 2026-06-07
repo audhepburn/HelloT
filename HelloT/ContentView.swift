@@ -62,6 +62,29 @@ extension View {
 
 // MARK: - Localization Helpers
 
+/// Global localization function — reads current language from UserDefaults
+/// and loads the string from the correct .lproj bundle (not Bundle.main).
+/// This is necessary because String(localized:) always uses Bundle.main's
+/// launch-time language and ignores .environment(\.locale).
+func L(_ key: String) -> String {
+    let raw = UserDefaults.standard.string(forKey: "appLanguage") ?? ""
+    let identifier: String
+    switch raw {
+    case "zh-Hans": identifier = "zh-Hans"
+    case "en":      identifier = "en"
+    case "de":      identifier = "de"
+    default:
+        // system locale
+        let code = Locale.current.language.languageCode?.identifier ?? "en"
+        identifier = (code == "zh") ? "zh-Hans" : code
+    }
+    if let path = Bundle.main.path(forResource: identifier, ofType: "lproj"),
+       let bundle = Bundle(path: path) {
+        return bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+    return Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+}
+
 enum AppLanguage: String, CaseIterable, Codable {
     case system = ""
     case zh = "zh-Hans"
@@ -70,10 +93,10 @@ enum AppLanguage: String, CaseIterable, Codable {
 
     var displayName: String {
         switch self {
-        case .system: return String(localized: "lang.system")
-        case .zh: return String(localized: "lang.chinese")
-        case .en: return String(localized: "lang.english")
-        case .de: return String(localized: "lang.german")
+        case .system: return L("lang.system")
+        case .zh:     return L("lang.chinese")
+        case .en:     return L("lang.english")
+        case .de:     return L("lang.german")
         }
     }
 
@@ -91,11 +114,11 @@ enum AppLanguage: String, CaseIterable, Codable {
 
 struct CityClock: Identifiable {
     let id = UUID()
-    let nameKey: LocalizedStringResource
+    let nameKey: String
     let timeZone: TimeZone
     let flag: String
 
-    var name: String { String(localized: nameKey) }
+    var name: String { L(nameKey) }
 }
 
 let cities = [
@@ -111,13 +134,13 @@ let cityAccents: [Color] = [.blue, .orange, .purple, .pink]
 
 func periodString(for hour: Int) -> String {
     switch hour {
-    case 0..<6: return String(localized: "period.dawn")
-    case 6..<9: return String(localized: "period.morning")
-    case 9..<12: return String(localized: "period.am")
-    case 12..<14: return String(localized: "period.noon")
-    case 14..<18: return String(localized: "period.afternoon")
-    case 18..<19: return String(localized: "period.dusk")
-    default: return String(localized: "period.evening")
+    case 0..<6: return L("period.dawn")
+    case 6..<9: return L("period.morning")
+    case 9..<12: return L("period.am")
+    case 12..<14: return L("period.noon")
+    case 14..<18: return L("period.afternoon")
+    case 18..<19: return L("period.dusk")
+    default: return L("period.evening")
     }
 }
 
@@ -149,13 +172,13 @@ struct ContentView: View {
 
             // Bottom tab bar
             HStack(spacing: 0) {
-                TabButton(title: String(localized: "clock"), icon: "clock.fill", selected: selectedTab == 0, isDarkMode: isDarkMode) {
+                TabButton(title: L("clock"), icon: "clock.fill", selected: selectedTab == 0, isDarkMode: isDarkMode) {
                     selectedTab = 0
                 }
-                TabButton(title: String(localized: "stopwatch"), icon: "stopwatch.fill", selected: selectedTab == 1, isDarkMode: isDarkMode) {
+                TabButton(title: L("stopwatch"), icon: "stopwatch.fill", selected: selectedTab == 1, isDarkMode: isDarkMode) {
                     selectedTab = 1
                 }
-                TabButton(title: String(localized: "system"), icon: "gearshape.fill", selected: selectedTab == 2, isDarkMode: isDarkMode) {
+                TabButton(title: L("system"), icon: "gearshape.fill", selected: selectedTab == 2, isDarkMode: isDarkMode) {
                     selectedTab = 2
                 }
             }
@@ -493,7 +516,7 @@ struct ClockExpandedView: View {
             // Digital time
             HStack(spacing: 6) {
                 VStack(spacing: 4) {
-                    Text(String(localized: "hour")).font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(L("hour")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", hour))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -501,7 +524,7 @@ struct ClockExpandedView: View {
                 }
                 Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text(String(localized: "minute")).font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(L("minute")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", minute))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -509,7 +532,7 @@ struct ClockExpandedView: View {
                 }
                 Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text(String(localized: "second")).font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(L("second")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", second))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -673,7 +696,7 @@ struct StopwatchView: View {
                         laps.removeAll()
                     }
                 } label: {
-                    Text(running ? String(localized: "lap") : String(localized: "reset"))
+                    Text(running ? L("lap") : L("reset"))
                         .font(.body.bold())
                         .foregroundColor(textColor)
                         .frame(width: 76, height: 76)
@@ -698,7 +721,7 @@ struct StopwatchView: View {
                     }
                     running.toggle()
                 } label: {
-                    Text(running ? String(localized: "stop") : String(localized: "start"))
+                    Text(running ? L("stop") : L("start"))
                         .font(.body.bold())
                         .foregroundColor(running ? .red : .green)
                         .frame(width: 76, height: 76)
@@ -717,7 +740,7 @@ struct StopwatchView: View {
                     Section {
                         ForEach(Array(laps.enumerated()), id: \.offset) { i, lap in
                             HStack {
-                                Text(String(localized: "lap.count \(laps.count - i)"))
+                                Text(L("lap.count \(laps.count - i)"))
                                     .foregroundColor(textColor.opacity(0.6))
                                 Spacer()
                                 Text(formattedTime(lap))
@@ -727,7 +750,7 @@ struct StopwatchView: View {
                             .listRowBackground(bgColor)
                         }
                     } header: {
-                        ListSectionHeader(title: String(localized: "lap.section"), icon: "flag.fill")
+                        ListSectionHeader(title: L("lap.section"), icon: "flag.fill")
                     }
                 }
 
@@ -764,7 +787,7 @@ struct StopwatchView: View {
                             }
                         }
                     } header: {
-                        ListSectionHeader(title: String(localized: "history \(history.count)"), icon: "clock.arrow.circlepath")
+                        ListSectionHeader(title: L("history \(history.count)"), icon: "clock.arrow.circlepath")
                     }
 
                     Section {
@@ -776,7 +799,7 @@ struct StopwatchView: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Text(String(localized: "clear.history"))
+                                Text(L("clear.history"))
                                     .font(.subheadline)
                                 Spacer()
                             }
@@ -820,7 +843,7 @@ struct SystemView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(String(localized: "system.settings"))
+            Text(L("system.settings"))
                 .font(.title2.bold())
                 .foregroundColor(textColor)
                 .padding(.top, 40)
@@ -834,7 +857,7 @@ struct SystemView: View {
                         .font(.title2)
                         .foregroundColor(.blue)
                         .frame(width: 36)
-                    Text(String(localized: "app.language"))
+                    Text(L("app.language"))
                         .font(.body)
                         .foregroundColor(textColor)
                     Spacer()
@@ -856,11 +879,11 @@ struct SystemView: View {
                         .font(.title2)
                         .foregroundColor(isDarkMode ? .indigo : .orange)
                         .frame(width: 36)
-                    Text(String(localized: "appearance"))
+                    Text(L("appearance"))
                         .font(.body)
                         .foregroundColor(textColor)
                     Spacer()
-                    Text(isDarkMode ? String(localized: "dark") : String(localized: "light"))
+                    Text(isDarkMode ? L("dark") : L("light"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isDarkMode)
@@ -877,11 +900,11 @@ struct SystemView: View {
                         .font(.title2)
                         .foregroundColor(.teal)
                         .frame(width: 36)
-                    Text(String(localized: "flat.style"))
+                    Text(L("flat.style"))
                         .font(.body)
                         .foregroundColor(textColor)
                     Spacer()
-                    Text(isFlatUI ? String(localized: "on") : String(localized: "off"))
+                    Text(isFlatUI ? L("on") : L("off"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isFlatUI)
@@ -903,13 +926,13 @@ struct SystemView: View {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundColor(textColor.opacity(0.4))
-                    Text(isFlatUI ? String(localized: "current.flat") : String(localized: "current.neumorphism"))
+                    Text(isFlatUI ? L("current.flat") : L("current.neumorphism"))
                         .font(.caption)
                         .foregroundColor(textColor.opacity(0.4))
                 }
                 Text(isFlatUI
-                     ? String(localized: "desc.flat")
-                     : String(localized: "desc.neumorphism")
+                     ? L("desc.flat")
+                     : L("desc.neumorphism")
                 )
                 .font(.caption2)
                 .foregroundColor(textColor.opacity(0.35))
