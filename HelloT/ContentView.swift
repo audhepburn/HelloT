@@ -7,6 +7,59 @@
 
 import SwiftUI
 
+// MARK: - Neumorphism Helpers
+
+extension Color {
+    static let neuBg = Color(red: 0.93, green: 0.93, blue: 0.95)
+    static let neuBgDark = Color(red: 0.17, green: 0.17, blue: 0.20)
+}
+
+struct NeuShadow: ViewModifier {
+    let isDark: Bool
+    var radius: CGFloat = 8
+    var offset: CGFloat = 6
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(
+                color: isDark ? .white.opacity(0.08) : .white.opacity(0.7),
+                radius: radius, x: -offset, y: -offset
+            )
+            .shadow(
+                color: isDark ? .black.opacity(0.5) : .black.opacity(0.15),
+                radius: radius, x: offset, y: offset
+            )
+    }
+}
+
+struct NeuInset: ViewModifier {
+    let isDark: Bool
+    var radius: CGFloat = 6
+    var offset: CGFloat = 4
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(
+                color: isDark ? .black.opacity(0.5) : .black.opacity(0.15),
+                radius: radius, x: -offset, y: -offset
+            )
+            .shadow(
+                color: isDark ? .white.opacity(0.08) : .white.opacity(0.7),
+                radius: radius, x: offset, y: offset
+            )
+    }
+}
+
+extension View {
+    func neuRaised(isDark: Bool, radius: CGFloat = 8, offset: CGFloat = 6) -> some View {
+        modifier(NeuShadow(isDark: isDark, radius: radius, offset: offset))
+    }
+
+    func neuInset(isDark: Bool, radius: CGFloat = 6, offset: CGFloat = 4) -> some View {
+        modifier(NeuInset(isDark: isDark, radius: radius, offset: offset))
+    }
+}
+
 // MARK: - Data Models
 
 struct CityClock: Identifiable {
@@ -23,15 +76,16 @@ let cities = [
     CityClock(name: "东京", timeZone: TimeZone(identifier: "Asia/Tokyo")!, flag: "🇯🇵"),
 ]
 
-// MARK: - Flat accent colors for each city
 let cityAccents: [Color] = [.blue, .orange, .purple, .pink]
 
 // MARK: - Main View
 
 struct ContentView: View {
     @State private var selectedTab = 0
-    @AppStorage("isDarkMode") private var isDarkMode = true
+    @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("isFlatUI") private var isFlatUI = false
+
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,34 +105,22 @@ struct ContentView: View {
 
             // Bottom tab bar
             HStack(spacing: 0) {
-                TabButton(title: "时钟", icon: "clock.fill", selected: selectedTab == 0, isFlatUI: isFlatUI) {
+                TabButton(title: "时钟", icon: "clock.fill", selected: selectedTab == 0, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
                     selectedTab = 0
                 }
-                TabButton(title: "秒表", icon: "stopwatch.fill", selected: selectedTab == 1, isFlatUI: isFlatUI) {
+                TabButton(title: "秒表", icon: "stopwatch.fill", selected: selectedTab == 1, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
                     selectedTab = 1
                 }
-                TabButton(title: "系统", icon: "gearshape.fill", selected: selectedTab == 2, isFlatUI: isFlatUI) {
+                TabButton(title: "系统", icon: "gearshape.fill", selected: selectedTab == 2, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
                     selectedTab = 2
                 }
             }
-            .padding(.top, isFlatUI ? 0 : 6)
-            .padding(.bottom, 20)
-            .background {
-                if isFlatUI {
-                    Color(UIColor.systemBackground)
-                } else {
-                    Color(isDarkMode ? UIColor.systemGray6 : UIColor.white)
-                        .shadow(color: .black.opacity(0.1), radius: 3, y: -2)
-                }
-            }
-            .overlay(alignment: .top) {
-                if isFlatUI {
-                    Rectangle()
-                        .fill(Color(UIColor.separator))
-                        .frame(height: 0.5)
-                }
-            }
+            .padding(.vertical, 8)
+            .padding(.bottom, 16)
+            .background(bgColor)
+            .neuInset(isDark: isDarkMode, radius: 4, offset: 3)
         }
+        .background(bgColor.ignoresSafeArea())
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
@@ -89,8 +131,11 @@ struct TabButton: View {
     let title: String
     let icon: String
     let selected: Bool
+    let isDarkMode: Bool
     let isFlatUI: Bool
     let action: () -> Void
+
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
 
     var body: some View {
         Button(action: action) {
@@ -100,12 +145,14 @@ struct TabButton: View {
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
             }
-            .foregroundColor(selected ? Color.accentColor : Color.gray)
+            .foregroundColor(selected ? cityAccents[0] : (isDarkMode ? .gray : .gray))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(
-                isFlatUI && selected
-                    ? Color.accentColor.opacity(0.1)
+                selected
+                    ? RoundedRectangle(cornerRadius: 12)
+                        .fill(bgColor)
+                        .neuInset(isDark: isDarkMode, radius: 4, offset: 3)
                     : Color.clear
             )
         }
@@ -119,28 +166,23 @@ struct WorldClockView: View {
     let isFlatUI: Bool
     @State private var selectedIndex: Int? = nil
     @State private var now = Date()
-    @Namespace private var ns
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
+
     var body: some View {
         ZStack {
-            // Grid / List
             ScrollView {
                 if isFlatUI {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
-                            FlatClockRow(
-                                city: city,
-                                date: now,
-                                index: index,
-                                isExpanded: false
-                            )
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                                    selectedIndex = index
+                            FlatClockRow(city: city, date: now, index: index, isExpanded: false, isDarkMode: isDarkMode)
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                        selectedIndex = index
+                                    }
                                 }
-                            }
                             if index < cities.count - 1 {
                                 Divider().padding(.leading, 72)
                             }
@@ -153,31 +195,22 @@ struct WorldClockView: View {
                         GridItem(.flexible(), spacing: 16)
                     ], spacing: 16) {
                         ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
-                            ClockFaceView(
-                                city: city,
-                                date: now,
-                                isExpanded: false,
-                                isDarkMode: isDarkMode
-                            )
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                                    selectedIndex = index
+                            NeuClockFaceView(city: city, date: now, index: index, isDarkMode: isDarkMode)
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                        selectedIndex = index
+                                    }
                                 }
-                            }
                         }
                     }
                     .padding(16)
                 }
             }
 
-            // Full-screen expanded overlay
             if let idx = selectedIndex {
                 ClockExpandedView(
-                    city: cities[idx],
-                    index: idx,
-                    date: now,
-                    isDarkMode: isDarkMode,
-                    isFlatUI: isFlatUI
+                    city: cities[idx], index: idx, date: now,
+                    isDarkMode: isDarkMode, isFlatUI: isFlatUI
                 ) {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                         selectedIndex = nil
@@ -186,9 +219,107 @@ struct WorldClockView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
-        .onReceive(timer) { time in
-            now = time
+        .onReceive(timer) { time in now = time }
+    }
+}
+
+// MARK: - Neumorphic Clock Face (default)
+
+struct NeuClockFaceView: View {
+    let city: CityClock
+    let date: Date
+    let index: Int
+    let isDarkMode: Bool
+
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
+    private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
+
+    private var calendar: Calendar {
+        var cal = Calendar.current
+        cal.timeZone = city.timeZone
+        return cal
+    }
+
+    private var hour: Int { calendar.component(.hour, from: date) }
+    private var minute: Int { calendar.component(.minute, from: date) }
+    private var second: Int { calendar.component(.second, from: date) }
+
+    private var hourAngle: Double { Double(hour % 12) * 30 + Double(minute) * 0.5 }
+    private var minuteAngle: Double { Double(minute) * 6 + Double(second) * 0.1 }
+    private var secondAngle: Double { Double(second) * 6 }
+
+    private var timeString: String {
+        let fmt = DateFormatter()
+        fmt.timeZone = city.timeZone
+        fmt.dateFormat = "HH:mm:ss"
+        return fmt.string(from: date)
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(city.flag)
+                .font(.system(size: 24))
+
+            // Clock dial
+            ZStack {
+                // Dial face — inset shadow to look recessed
+                Circle()
+                    .fill(bgColor)
+                    .neuInset(isDark: isDarkMode, radius: 5, offset: 4)
+
+                // Hour markers
+                ForEach(0..<12) { i in
+                    Rectangle()
+                        .fill(textColor.opacity(i % 3 == 0 ? 0.7 : 0.3))
+                        .frame(width: i % 3 == 0 ? 2.5 : 1.5,
+                               height: i % 3 == 0 ? 10 : 6)
+                        .offset(y: -(52 - (i % 3 == 0 ? 12 : 8)))
+                        .rotationEffect(.degrees(Double(i) * 30))
+                }
+
+                // Hour hand
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(textColor)
+                    .frame(width: 3.5, height: 28)
+                    .offset(y: -14)
+                    .rotationEffect(.degrees(hourAngle))
+
+                // Minute hand
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(textColor.opacity(0.8))
+                    .frame(width: 2.5, height: 38)
+                    .offset(y: -19)
+                    .rotationEffect(.degrees(minuteAngle))
+
+                // Second hand
+                Rectangle()
+                    .fill(cityAccents[index])
+                    .frame(width: 1.2, height: 42)
+                    .offset(y: -21)
+                    .rotationEffect(.degrees(secondAngle))
+
+                // Center dot
+                Circle()
+                    .fill(cityAccents[index])
+                    .frame(width: 5, height: 5)
+            }
+            .frame(width: 120, height: 120)
+
+            Text(city.name)
+                .font(.subheadline.bold())
+                .foregroundColor(textColor)
+
+            Text(timeString)
+                .font(.caption)
+                .foregroundColor(textColor.opacity(0.5))
+                .monospacedDigit()
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(bgColor)
+        )
+        .neuRaised(isDark: isDarkMode, radius: 10, offset: 7)
     }
 }
 
@@ -202,6 +333,10 @@ struct ClockExpandedView: View {
     let isFlatUI: Bool
     let onDismiss: () -> Void
 
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
+    private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
+    private var accent: Color { cityAccents[index] }
+
     private var calendar: Calendar {
         var cal = Calendar.current
         cal.timeZone = city.timeZone
@@ -212,22 +347,9 @@ struct ClockExpandedView: View {
     private var minute: Int { calendar.component(.minute, from: date) }
     private var second: Int { calendar.component(.second, from: date) }
 
-    private var hourAngle: Double {
-        Double(hour % 12) * 30 + Double(minute) * 0.5
-    }
-    private var minuteAngle: Double {
-        Double(minute) * 6 + Double(second) * 0.1
-    }
-    private var secondAngle: Double {
-        Double(second) * 6
-    }
-
-    private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.timeZone = city.timeZone
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: date)
-    }
+    private var hourAngle: Double { Double(hour % 12) * 30 + Double(minute) * 0.5 }
+    private var minuteAngle: Double { Double(minute) * 6 + Double(second) * 0.1 }
+    private var secondAngle: Double { Double(second) * 6 }
 
     private var dateString: String {
         let fmt = DateFormatter()
@@ -248,25 +370,19 @@ struct ClockExpandedView: View {
         return m > 0 ? String(format: "UTC%+d:%02d", h, m) : String(format: "UTC%+d", h)
     }
 
-    private var accent: Color { cityAccents[index] }
-    private var textColor: Color { isDarkMode ? .white : .black }
-
     var body: some View {
         VStack(spacing: 0) {
-            // Dismiss hint
             HStack {
                 Image(systemName: "chevron.down")
                     .font(.caption)
-                    .foregroundColor(.secondary)
                 Text("点击任意位置关闭")
                     .font(.caption)
-                    .foregroundColor(.secondary)
             }
+            .foregroundColor(textColor.opacity(0.4))
             .padding(.top, 16)
 
             Spacer().frame(height: 20)
 
-            // Flag + City
             Text(city.flag)
                 .font(.system(size: 56))
 
@@ -282,21 +398,11 @@ struct ClockExpandedView: View {
 
             Spacer().frame(height: 24)
 
-            // Analog clock (large)
+            // Large clock dial — inset
             ZStack {
-                // Outer glow ring
                 Circle()
-                    .stroke(
-                        AngularGradient(
-                            colors: [.clear, accent.opacity(0.2), .clear],
-                            center: .center
-                        ),
-                        lineWidth: 3
-                    )
-
-                Circle()
-                    .fill(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
-                    .overlay(Circle().stroke(isDarkMode ? Color.white.opacity(0.15) : Color.black.opacity(0.1), lineWidth: 1.5))
+                    .fill(bgColor)
+                    .neuInset(isDark: isDarkMode, radius: 12, offset: 8)
 
                 // Hour numbers
                 ForEach(1...12, id: \.self) { i in
@@ -305,130 +411,95 @@ struct ClockExpandedView: View {
                         .foregroundColor(textColor.opacity(0.5))
                         .offset(y: -110)
                         .rotationEffect(.degrees(Double(i) * 30))
-                        .rotationEffect(.degrees(-Double(i) * 30)) // counter-rotate text
+                        .rotationEffect(.degrees(-Double(i) * 30))
                 }
 
-                // Minute ticks (60)
+                // Minute ticks
                 ForEach(0..<60) { i in
                     Rectangle()
                         .fill(textColor.opacity(i % 5 == 0 ? 0.5 : 0.15))
-                        .frame(width: i % 5 == 0 ? 2 : 0.8,
-                               height: i % 5 == 0 ? 10 : 4)
+                        .frame(width: i % 5 == 0 ? 2 : 0.8, height: i % 5 == 0 ? 10 : 4)
                         .offset(y: -136)
                         .rotationEffect(.degrees(Double(i) * 6))
                 }
 
-                // Hour hand
                 RoundedRectangle(cornerRadius: 2)
                     .fill(textColor)
                     .frame(width: 5, height: 68)
                     .offset(y: -34)
                     .rotationEffect(.degrees(hourAngle))
 
-                // Minute hand
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(textColor.opacity(0.85))
                     .frame(width: 3.5, height: 95)
                     .offset(y: -47.5)
                     .rotationEffect(.degrees(minuteAngle))
 
-                // Second hand
                 Rectangle()
                     .fill(accent)
                     .frame(width: 1.5, height: 108)
                     .offset(y: -54)
                     .rotationEffect(.degrees(secondAngle))
 
-                // Second hand tail
                 Rectangle()
                     .fill(accent)
                     .frame(width: 1.5, height: 24)
                     .offset(y: 12)
                     .rotationEffect(.degrees(secondAngle))
 
-                // Center circle
-                Circle()
-                    .fill(accent)
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(isDarkMode ? .black : .white)
-                    .frame(width: 3, height: 3)
+                Circle().fill(accent).frame(width: 8, height: 8)
+                Circle().fill(bgColor).frame(width: 3, height: 3)
             }
             .frame(width: 280, height: 280)
 
             Spacer().frame(height: 28)
 
-            // Digital time display
+            // Digital time — raised pill
             HStack(spacing: 6) {
                 VStack(spacing: 4) {
-                    Text("时")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("时").font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", hour))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
                         .frame(width: 54)
                 }
-
-                Text(":")
-                    .font(.system(size: 30, weight: .thin))
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 16)
-
+                Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text("分")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("分").font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", minute))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
                         .frame(width: 54)
                 }
-
-                Text(":")
-                    .font(.system(size: 30, weight: .thin))
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 16)
-
+                Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text("秒")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("秒").font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", second))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
                         .frame(width: 54)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(bgColor)
+            )
+            .neuRaised(isDark: isDarkMode, radius: 8, offset: 5)
 
             Spacer().frame(height: 20)
 
-            // Date info
             Text(dateString)
                 .font(.body)
-                .foregroundColor(textColor.opacity(0.6))
+                .foregroundColor(textColor.opacity(0.5))
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            Color(isDarkMode ? UIColor.systemBackground : UIColor.systemBackground)
-                .ignoresSafeArea()
+            bgColor.ignoresSafeArea()
                 .onTapGesture { onDismiss() }
-        )
-        .background(
-            // Accent color top glow
-            VStack {
-                LinearGradient(
-                    colors: [accent.opacity(isDarkMode ? 0.12 : 0.06), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 200)
-                Spacer()
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
         )
     }
 }
@@ -439,7 +510,8 @@ struct FlatClockRow: View {
     let city: CityClock
     let date: Date
     let index: Int
-    let isExpanded: Bool // kept for API compat, unused
+    let isExpanded: Bool
+    let isDarkMode: Bool
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -465,15 +537,11 @@ struct FlatClockRow: View {
                 .fill(cityAccents[index])
                 .frame(width: 4, height: 36)
 
-            Text(city.flag)
-                .font(.title2)
+            Text(city.flag).font(.title2)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(city.name)
-                    .font(.body.bold())
-                Text(dateString)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Text(city.name).font(.body.bold())
+                Text(dateString).font(.caption2).foregroundColor(.secondary)
             }
 
             Spacer()
@@ -489,108 +557,6 @@ struct FlatClockRow: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Analog Clock Face (default style)
-
-struct ClockFaceView: View {
-    let city: CityClock
-    let date: Date
-    let isExpanded: Bool
-    let isDarkMode: Bool
-
-    private var calendar: Calendar {
-        var cal = Calendar.current
-        cal.timeZone = city.timeZone
-        return cal
-    }
-
-    private var hour: Int { calendar.component(.hour, from: date) }
-    private var minute: Int { calendar.component(.minute, from: date) }
-    private var second: Int { calendar.component(.second, from: date) }
-
-    private var hourAngle: Double {
-        Double(hour % 12) * 30 + Double(minute) * 0.5
-    }
-    private var minuteAngle: Double {
-        Double(minute) * 6 + Double(second) * 0.1
-    }
-    private var secondAngle: Double {
-        Double(second) * 6
-    }
-
-    private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.timeZone = city.timeZone
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: date)
-    }
-
-    private var faceColor: Color { isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04) }
-    private var rimColor: Color { isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.12) }
-    private var handColor: Color { isDarkMode ? .white : .black }
-    private var textColor: Color { isDarkMode ? .white : .black }
-
-    var body: some View {
-        VStack(spacing: isExpanded ? 12 : 8) {
-            Text(city.flag)
-                .font(isExpanded ? .system(size: 36) : .system(size: 24))
-
-            ZStack {
-                Circle()
-                    .fill(faceColor)
-                    .overlay(Circle().stroke(rimColor, lineWidth: 2))
-
-                ForEach(0..<12) { i in
-                    Rectangle()
-                        .fill(i % 3 == 0 ? handColor.opacity(0.8) : handColor.opacity(0.35))
-                        .frame(width: i % 3 == 0 ? 2.5 : 1.5,
-                               height: i % 3 == 0 ? 12 : 7)
-                        .offset(y: -((isExpanded ? 80 : 52) - (i % 3 == 0 ? 14 : 9)))
-                        .rotationEffect(.degrees(Double(i) * 30))
-                }
-
-                Rectangle()
-                    .fill(handColor)
-                    .frame(width: 3.5, height: isExpanded ? 44 : 28)
-                    .offset(y: -(isExpanded ? 22 : 14))
-                    .rotationEffect(.degrees(hourAngle))
-
-                Rectangle()
-                    .fill(handColor.opacity(0.85))
-                    .frame(width: 2.5, height: isExpanded ? 60 : 38)
-                    .offset(y: -(isExpanded ? 30 : 19))
-                    .rotationEffect(.degrees(minuteAngle))
-
-                Rectangle()
-                    .fill(Color.red)
-                    .frame(width: 1.2, height: isExpanded ? 65 : 42)
-                    .offset(y: -(isExpanded ? 32 : 21))
-                    .rotationEffect(.degrees(secondAngle))
-
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 5, height: 5)
-            }
-            .frame(width: isExpanded ? 180 : 120, height: isExpanded ? 180 : 120)
-
-            Text(city.name)
-                .font(isExpanded ? .title3.bold() : .subheadline.bold())
-                .foregroundColor(textColor)
-
-            Text(timeString)
-                .font(isExpanded ? .body : .caption)
-                .foregroundColor(textColor.opacity(0.5))
-                .monospacedDigit()
-        }
-        .padding(isExpanded ? 16 : 10)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(isDarkMode ? Color.white.opacity(isExpanded ? 0.12 : 0.06) : Color.black.opacity(isExpanded ? 0.06 : 0.03))
-        )
-        .scaleEffect(isExpanded ? 1.0 : 0.88)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isExpanded)
     }
 }
 
@@ -613,7 +579,8 @@ struct StopwatchView: View {
     @State private var timer: Timer?
     @State private var history: [StopwatchRecord] = []
 
-    private var textColor: Color { isDarkMode ? .white : .black }
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
+    private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
 
     private var display: String {
         let m = Int(elapsed) / 60
@@ -632,9 +599,7 @@ struct StopwatchView: View {
     private func saveToHistory(_ duration: TimeInterval) {
         let record = StopwatchRecord(duration: duration, date: Date())
         history.insert(record, at: 0)
-        if history.count > 10 {
-            history = Array(history.prefix(10))
-        }
+        if history.count > 10 { history = Array(history.prefix(10)) }
         if let data = try? JSONEncoder().encode(history) {
             UserDefaults.standard.set(data, forKey: "stopwatch_history")
         }
@@ -649,38 +614,22 @@ struct StopwatchView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            // Display
-            if isFlatUI {
-                HStack(spacing: 4) {
-                    let m = Int(elapsed) / 60
-                    let s = Int(elapsed) % 60
-                    let ms = Int((elapsed.truncatingRemainder(dividingBy: 1)) * 100)
-
-                    Text(String(format: "%02d", m))
-                        .font(.system(size: 64, weight: .thin, design: .monospaced))
-                    Text(":")
-                        .font(.system(size: 48, weight: .thin))
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%02d", s))
-                        .font(.system(size: 64, weight: .thin, design: .monospaced))
-                    Text(".")
-                        .font(.system(size: 48, weight: .thin))
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%02d", ms))
-                        .font(.system(size: 40, weight: .thin, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
+            // Time display — raised card
+            Text(display)
+                .font(.system(size: 64, weight: .thin, design: .monospaced))
                 .foregroundColor(textColor)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(bgColor)
+                )
+                .neuRaised(isDark: isDarkMode, radius: 12, offset: 8)
                 .padding(.top, 50)
-            } else {
-                Text(display)
-                    .font(.system(size: 64, weight: .thin, design: .monospaced))
-                    .foregroundColor(textColor)
-                    .padding(.top, 50)
-            }
 
-            // Controls
+            // Controls — neumorphic round buttons
             HStack(spacing: 40) {
+                // Lap / Reset
                 Button {
                     if running {
                         laps.insert(elapsed, at: 0)
@@ -689,33 +638,23 @@ struct StopwatchView: View {
                         laps.removeAll()
                     }
                 } label: {
-                    if isFlatUI {
-                        Text(running ? "计次" : "重置")
-                            .font(.body.bold())
-                            .foregroundColor(textColor)
-                            .frame(width: 76, height: 44)
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(10)
-                    } else {
-                        Circle()
-                            .fill(textColor.opacity(0.15))
-                            .frame(width: 76, height: 76)
-                            .overlay(
-                                Text(running ? "圈" : "重置")
-                                    .foregroundColor(textColor)
-                                    .font(.body.bold())
-                            )
-                    }
+                    Text(running ? "计次" : "重置")
+                        .font(.body.bold())
+                        .foregroundColor(textColor)
+                        .frame(width: 76, height: 76)
+                        .background(
+                            Circle()
+                                .fill(bgColor)
+                        )
+                        .neuRaised(isDark: isDarkMode, radius: 10, offset: 7)
                 }
 
+                // Start / Stop
                 Button {
                     if running {
-                        // Stop — save to history
                         timer?.invalidate()
                         timer = nil
-                        if elapsed > 0 {
-                            saveToHistory(elapsed)
-                        }
+                        if elapsed > 0 { saveToHistory(elapsed) }
                     } else {
                         let start = Date().addingTimeInterval(-elapsed)
                         timer = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { _ in
@@ -724,63 +663,47 @@ struct StopwatchView: View {
                     }
                     running.toggle()
                 } label: {
-                    if isFlatUI {
-                        Text(running ? "停止" : "开始")
-                            .font(.body.bold())
-                            .foregroundColor(.white)
-                            .frame(width: 76, height: 44)
-                            .background(running ? Color.red : Color.green)
-                            .cornerRadius(10)
-                    } else {
-                        Circle()
-                            .fill(running ? Color.red.opacity(0.8) : Color.green.opacity(0.8))
-                            .frame(width: 76, height: 76)
-                            .overlay(
-                                Text(running ? "停止" : "开始")
-                                    .foregroundColor(.white)
-                                    .font(.body.bold())
-                            )
-                    }
+                    Text(running ? "停止" : "开始")
+                        .font(.body.bold())
+                        .foregroundColor(running ? .red : .green)
+                        .frame(width: 76, height: 76)
+                        .background(
+                            Circle()
+                                .fill(bgColor)
+                        )
+                        .neuRaised(isDark: isDarkMode, radius: 10, offset: 7)
                 }
             }
             .padding(.top, 12)
 
-            // Laps + History list
+            // Laps + History
             List {
-                // Current laps
                 if !laps.isEmpty {
                     Section {
                         ForEach(Array(laps.enumerated()), id: \.offset) { i, lap in
                             HStack {
                                 Text("圈 \(laps.count - i)")
-                                    .font(isFlatUI ? .caption : .body)
-                                    .foregroundColor(isFlatUI ? .secondary : textColor.opacity(0.6))
+                                    .foregroundColor(textColor.opacity(0.6))
                                 Spacer()
                                 Text(formattedTime(lap))
                                     .foregroundColor(textColor)
                                     .monospacedDigit()
-                                    .font(isFlatUI ? .system(.body, design: .monospaced) : .body)
                             }
-                            .listRowBackground(
-                                isFlatUI ? Color.clear : textColor.opacity(0.05)
-                            )
+                            .listRowBackground(bgColor)
                         }
                     } header: {
-                        ListSectionHeader(title: "本次计次", icon: "flag.fill", isFlatUI: isFlatUI)
+                        ListSectionHeader(title: "本次计次", icon: "flag.fill")
                     }
                 }
 
-                // History
                 if !history.isEmpty {
                     Section {
                         ForEach(Array(history.enumerated()), id: \.element.id) { i, record in
                             HStack {
-                                // Rank badge
                                 Text("#\(i + 1)")
                                     .font(.caption.bold())
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(textColor.opacity(0.4))
                                     .frame(width: 28, alignment: .leading)
-
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(formattedTime(record.duration))
                                         .foregroundColor(textColor)
@@ -788,21 +711,16 @@ struct StopwatchView: View {
                                         .font(.system(.body, design: .monospaced))
                                     Text(record.date.formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(textColor.opacity(0.4))
                                 }
-
                                 Spacer()
-
-                                // Duration comparison bar
                                 if let maxDur = history.map(\.duration).max(), maxDur > 0 {
                                     Capsule()
-                                        .fill(Color.accentColor.opacity(0.3))
+                                        .fill(cityAccents[0].opacity(0.3))
                                         .frame(width: max(12, CGFloat(record.duration / maxDur) * 60), height: 6)
                                 }
                             }
-                            .listRowBackground(
-                                isFlatUI ? Color.clear : textColor.opacity(0.05)
-                            )
+                            .listRowBackground(bgColor)
                         }
                         .onDelete { indexSet in
                             history.remove(atOffsets: indexSet)
@@ -811,9 +729,9 @@ struct StopwatchView: View {
                             }
                         }
                     } header: {
-                        ListSectionHeader(title: "历史记录 (最近\(history.count)次)", icon: "clock.arrow.circlepath", isFlatUI: isFlatUI)
+                        ListSectionHeader(title: "历史记录 (最近\(history.count)次)", icon: "clock.arrow.circlepath")
                     }
-                    // Clear all button
+
                     Section {
                         Button(role: .destructive) {
                             withAnimation {
@@ -829,16 +747,14 @@ struct StopwatchView: View {
                             }
                             .frame(height: 36)
                         }
-                        .listRowBackground(Color(UIColor.secondarySystemBackground).opacity(0.5))
+                        .listRowBackground(bgColor)
                     }
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
-        .onAppear {
-            loadHistory()
-        }
+        .onAppear { loadHistory() }
     }
 }
 
@@ -847,14 +763,11 @@ struct StopwatchView: View {
 struct ListSectionHeader: View {
     let title: String
     let icon: String
-    let isFlatUI: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.caption2)
-            Text(title)
-                .font(.caption)
+            Image(systemName: icon).font(.caption2)
+            Text(title).font(.caption)
         }
         .foregroundColor(.secondary)
     }
@@ -866,30 +779,32 @@ struct SystemView: View {
     @Binding var isDarkMode: Bool
     @Binding var isFlatUI: Bool
 
+    private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
+    private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
+
     var body: some View {
         VStack(spacing: 0) {
             Text("系统设置")
                 .font(.title2.bold())
+                .foregroundColor(textColor)
                 .padding(.top, 40)
                 .padding(.bottom, 24)
 
+            // Settings card
             VStack(spacing: 0) {
-                // Dark mode toggle
+                // Dark mode
                 HStack {
                     Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
                         .font(.title2)
                         .foregroundColor(isDarkMode ? .indigo : .orange)
                         .frame(width: 36)
-
                     Text("外观模式")
                         .font(.body)
-
+                        .foregroundColor(textColor)
                     Spacer()
-
                     Text(isDarkMode ? "深色" : "浅色")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
-
+                        .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isDarkMode)
                         .labelsHidden()
                         .tint(isDarkMode ? .indigo : .orange)
@@ -904,16 +819,13 @@ struct SystemView: View {
                         .font(.title2)
                         .foregroundColor(.teal)
                         .frame(width: 36)
-
                     Text("扁平化风格")
                         .font(.body)
-
+                        .foregroundColor(textColor)
                     Spacer()
-
                     Text(isFlatUI ? "开" : "关")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
-
+                        .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isFlatUI)
                         .labelsHidden()
                         .tint(.teal)
@@ -921,9 +833,10 @@ struct SystemView: View {
                 .padding(16)
             }
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(UIColor.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(bgColor)
             )
+            .neuRaised(isDark: isDarkMode, radius: 10, offset: 7)
             .padding(.horizontal, 20)
 
             // Description
@@ -931,17 +844,17 @@ struct SystemView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "info.circle")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(isFlatUI ? "当前：扁平化风格" : "当前：经典风格")
+                        .foregroundColor(textColor.opacity(0.4))
+                    Text(isFlatUI ? "当前：扁平化风格" : "当前：新拟态风格")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(textColor.opacity(0.4))
                 }
                 Text(isFlatUI
                      ? "使用简洁的列表式布局，去除阴影和圆形按钮，以纯色色块和线条为主要视觉元素。"
-                     : "使用模拟表盘和圆形按钮，带有阴影和半透明效果的经典设计。"
+                     : "新拟态（Neumorphism）风格，通过双层阴影营造凸起与凹陷的质感，柔和而富有立体感。"
                 )
                 .font(.caption2)
-                .foregroundColor(.secondary.opacity(0.7))
+                .foregroundColor(textColor.opacity(0.35))
                 .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 24)
