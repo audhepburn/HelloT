@@ -60,23 +60,66 @@ extension View {
     }
 }
 
+// MARK: - Localization Helpers
+
+enum AppLanguage: String, CaseIterable, Codable {
+    case system = ""
+    case zh = "zh-Hans"
+    case en = "en"
+    case de = "de"
+
+    var displayName: String {
+        switch self {
+        case .system: return String(localized: "lang.system")
+        case .zh: return String(localized: "lang.chinese")
+        case .en: return String(localized: "lang.english")
+        case .de: return String(localized: "lang.german")
+        }
+    }
+
+    var locale: Locale? {
+        switch self {
+        case .system: return nil
+        case .zh: return Locale(identifier: "zh-Hans")
+        case .en: return Locale(identifier: "en")
+        case .de: return Locale(identifier: "de")
+        }
+    }
+}
+
 // MARK: - Data Models
 
 struct CityClock: Identifiable {
     let id = UUID()
-    let name: String
+    let nameKey: LocalizedStringResource
     let timeZone: TimeZone
     let flag: String
+
+    var name: String { String(localized: nameKey) }
 }
 
 let cities = [
-    CityClock(name: "北京", timeZone: TimeZone(identifier: "Asia/Shanghai")!, flag: "🇨🇳"),
-    CityClock(name: "纽约", timeZone: TimeZone(identifier: "America/New_York")!, flag: "🇺🇸"),
-    CityClock(name: "巴黎", timeZone: TimeZone(identifier: "Europe/Paris")!, flag: "🇫🇷"),
-    CityClock(name: "东京", timeZone: TimeZone(identifier: "Asia/Tokyo")!, flag: "🇯🇵"),
+    CityClock(nameKey: "city.beijing", timeZone: TimeZone(identifier: "Asia/Shanghai")!, flag: "🇨🇳"),
+    CityClock(nameKey: "city.newyork", timeZone: TimeZone(identifier: "America/New_York")!, flag: "🇺🇸"),
+    CityClock(nameKey: "city.paris", timeZone: TimeZone(identifier: "Europe/Paris")!, flag: "🇫🇷"),
+    CityClock(nameKey: "city.tokyo", timeZone: TimeZone(identifier: "Asia/Tokyo")!, flag: "🇯🇵"),
 ]
 
 let cityAccents: [Color] = [.blue, .orange, .purple, .pink]
+
+// MARK: - Period of Day (localized)
+
+func periodString(for hour: Int) -> String {
+    switch hour {
+    case 0..<6: return String(localized: "period.dawn")
+    case 6..<9: return String(localized: "period.morning")
+    case 9..<12: return String(localized: "period.am")
+    case 12..<14: return String(localized: "period.noon")
+    case 14..<18: return String(localized: "period.afternoon")
+    case 18..<19: return String(localized: "period.dusk")
+    default: return String(localized: "period.evening")
+    }
+}
 
 // MARK: - Main View
 
@@ -84,6 +127,7 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("isFlatUI") private var isFlatUI = false
+    @AppStorage("appLanguage") private var appLanguage: AppLanguage = .system
 
     private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
 
@@ -96,7 +140,7 @@ struct ContentView: View {
                 case 1:
                     StopwatchView(isDarkMode: isDarkMode, isFlatUI: isFlatUI)
                 case 2:
-                    SystemView(isDarkMode: $isDarkMode, isFlatUI: $isFlatUI)
+                    SystemView(isDarkMode: $isDarkMode, isFlatUI: $isFlatUI, appLanguage: $appLanguage)
                 default:
                     EmptyView()
                 }
@@ -105,13 +149,13 @@ struct ContentView: View {
 
             // Bottom tab bar
             HStack(spacing: 0) {
-                TabButton(title: "时钟", icon: "clock.fill", selected: selectedTab == 0, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
+                TabButton(title: String(localized: "clock"), icon: "clock.fill", selected: selectedTab == 0, isDarkMode: isDarkMode) {
                     selectedTab = 0
                 }
-                TabButton(title: "秒表", icon: "stopwatch.fill", selected: selectedTab == 1, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
+                TabButton(title: String(localized: "stopwatch"), icon: "stopwatch.fill", selected: selectedTab == 1, isDarkMode: isDarkMode) {
                     selectedTab = 1
                 }
-                TabButton(title: "系统", icon: "gearshape.fill", selected: selectedTab == 2, isDarkMode: isDarkMode, isFlatUI: isFlatUI) {
+                TabButton(title: String(localized: "system"), icon: "gearshape.fill", selected: selectedTab == 2, isDarkMode: isDarkMode) {
                     selectedTab = 2
                 }
             }
@@ -122,6 +166,7 @@ struct ContentView: View {
         }
         .background(bgColor.ignoresSafeArea())
         .preferredColorScheme(isDarkMode ? .dark : .light)
+        .environment(\.locale, appLanguage.locale ?? Locale.current)
     }
 }
 
@@ -132,7 +177,6 @@ struct TabButton: View {
     let icon: String
     let selected: Bool
     let isDarkMode: Bool
-    let isFlatUI: Bool
     let action: () -> Void
 
     private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
@@ -145,7 +189,7 @@ struct TabButton: View {
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
             }
-            .foregroundColor(selected ? cityAccents[0] : (isDarkMode ? .gray : .gray))
+            .foregroundColor(selected ? cityAccents[0] : .gray)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background {
@@ -179,7 +223,7 @@ struct WorldClockView: View {
                 if isFlatUI {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
-                            FlatClockRow(city: city, date: now, index: index, isExpanded: false, isDarkMode: isDarkMode)
+                            FlatClockRow(city: city, date: now, index: index, isDarkMode: isDarkMode)
                                 .onTapGesture {
                                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                                         selectedIndex = index
@@ -264,12 +308,10 @@ struct NeuClockFaceView: View {
 
             // Clock dial
             ZStack {
-                // Dial face — inset shadow to look recessed
                 Circle()
                     .fill(bgColor)
                     .neuInset(isDark: isDarkMode, radius: 5, offset: 4)
 
-                // Hour markers
                 ForEach(0..<12) { i in
                     Rectangle()
                         .fill(textColor.opacity(i % 3 == 0 ? 0.7 : 0.3))
@@ -279,28 +321,24 @@ struct NeuClockFaceView: View {
                         .rotationEffect(.degrees(Double(i) * 30))
                 }
 
-                // Hour hand
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(textColor)
                     .frame(width: 3.5, height: 28)
                     .offset(y: -14)
                     .rotationEffect(.degrees(hourAngle))
 
-                // Minute hand
                 RoundedRectangle(cornerRadius: 1)
                     .fill(textColor.opacity(0.8))
                     .frame(width: 2.5, height: 38)
                     .offset(y: -19)
                     .rotationEffect(.degrees(minuteAngle))
 
-                // Second hand
                 Rectangle()
                     .fill(cityAccents[index])
                     .frame(width: 1.2, height: 42)
                     .offset(y: -21)
                     .rotationEffect(.degrees(secondAngle))
 
-                // Center dot
                 Circle()
                     .fill(cityAccents[index])
                     .frame(width: 5, height: 5)
@@ -335,6 +373,8 @@ struct ClockExpandedView: View {
     let isFlatUI: Bool
     let onDismiss: () -> Void
 
+    @Environment(\.locale) private var locale
+
     private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
     private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
     private var accent: Color { cityAccents[index] }
@@ -356,13 +396,9 @@ struct ClockExpandedView: View {
     private var dateString: String {
         let fmt = DateFormatter()
         fmt.timeZone = city.timeZone
-        fmt.locale = Locale(identifier: "zh_CN")
-        fmt.dateFormat = "yyyy年M月d日 EEEE"
+        fmt.locale = locale
+        fmt.dateStyle = .full
         return fmt.string(from: date)
-    }
-
-    private var periodString: String {
-        hour < 6 ? "凌晨" : hour < 9 ? "早上" : hour < 12 ? "上午" : hour < 14 ? "中午" : hour < 18 ? "下午" : hour < 19 ? "傍晚" : "晚上"
     }
 
     private var utcOffset: String {
@@ -377,7 +413,7 @@ struct ClockExpandedView: View {
             HStack {
                 Image(systemName: "chevron.down")
                     .font(.caption)
-                Text("点击任意位置关闭")
+                Text("tap.close")
                     .font(.caption)
             }
             .foregroundColor(textColor.opacity(0.4))
@@ -393,20 +429,19 @@ struct ClockExpandedView: View {
                 .foregroundColor(textColor)
                 .padding(.top, 8)
 
-            Text("\(periodString) · \(utcOffset)")
+            Text("\(periodString(for: hour)) · \(utcOffset)")
                 .font(.subheadline)
                 .foregroundColor(accent)
                 .padding(.top, 4)
 
             Spacer().frame(height: 24)
 
-            // Large clock dial — inset
+            // Large clock dial
             ZStack {
                 Circle()
                     .fill(bgColor)
                     .neuInset(isDark: isDarkMode, radius: 12, offset: 8)
 
-                // Hour numbers
                 ForEach(1...12, id: \.self) { i in
                     Text("\(i)")
                         .font(.system(size: 16, weight: .medium, design: .rounded))
@@ -416,7 +451,6 @@ struct ClockExpandedView: View {
                         .rotationEffect(.degrees(-Double(i) * 30))
                 }
 
-                // Minute ticks
                 ForEach(0..<60) { i in
                     Rectangle()
                         .fill(textColor.opacity(i % 5 == 0 ? 0.5 : 0.15))
@@ -456,10 +490,10 @@ struct ClockExpandedView: View {
 
             Spacer().frame(height: 28)
 
-            // Digital time — raised pill
+            // Digital time
             HStack(spacing: 6) {
                 VStack(spacing: 4) {
-                    Text("时").font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(String(localized: "hour")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", hour))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -467,7 +501,7 @@ struct ClockExpandedView: View {
                 }
                 Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text("分").font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(String(localized: "minute")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", minute))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -475,7 +509,7 @@ struct ClockExpandedView: View {
                 }
                 Text(":").font(.system(size: 30, weight: .thin)).foregroundColor(textColor.opacity(0.3)).padding(.bottom, 16)
                 VStack(spacing: 4) {
-                    Text("秒").font(.caption2).foregroundColor(textColor.opacity(0.4))
+                    Text(String(localized: "second")).font(.caption2).foregroundColor(textColor.opacity(0.4))
                     Text(String(format: "%02d", second))
                         .font(.system(size: 36, weight: .thin, design: .monospaced))
                         .foregroundColor(textColor)
@@ -512,8 +546,9 @@ struct FlatClockRow: View {
     let city: CityClock
     let date: Date
     let index: Int
-    let isExpanded: Bool
     let isDarkMode: Bool
+
+    @Environment(\.locale) private var locale
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -528,8 +563,8 @@ struct FlatClockRow: View {
     private var dateString: String {
         let fmt = DateFormatter()
         fmt.timeZone = city.timeZone
+        fmt.locale = locale
         fmt.dateFormat = "MM/dd EEE"
-        fmt.locale = Locale(identifier: "zh_CN")
         return fmt.string(from: date)
     }
 
@@ -616,7 +651,6 @@ struct StopwatchView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            // Time display — raised card
             Text(display)
                 .font(.system(size: 64, weight: .thin, design: .monospaced))
                 .foregroundColor(textColor)
@@ -629,7 +663,6 @@ struct StopwatchView: View {
                 .neuRaised(isDark: isDarkMode, radius: 12, offset: 8)
                 .padding(.top, 50)
 
-            // Controls — neumorphic round buttons
             HStack(spacing: 40) {
                 // Lap / Reset
                 Button {
@@ -640,7 +673,7 @@ struct StopwatchView: View {
                         laps.removeAll()
                     }
                 } label: {
-                    Text(running ? "计次" : "重置")
+                    Text(running ? String(localized: "lap") : String(localized: "reset"))
                         .font(.body.bold())
                         .foregroundColor(textColor)
                         .frame(width: 76, height: 76)
@@ -665,7 +698,7 @@ struct StopwatchView: View {
                     }
                     running.toggle()
                 } label: {
-                    Text(running ? "停止" : "开始")
+                    Text(running ? String(localized: "stop") : String(localized: "start"))
                         .font(.body.bold())
                         .foregroundColor(running ? .red : .green)
                         .frame(width: 76, height: 76)
@@ -684,7 +717,7 @@ struct StopwatchView: View {
                     Section {
                         ForEach(Array(laps.enumerated()), id: \.offset) { i, lap in
                             HStack {
-                                Text("圈 \(laps.count - i)")
+                                Text(String(localized: "lap.count \(laps.count - i)"))
                                     .foregroundColor(textColor.opacity(0.6))
                                 Spacer()
                                 Text(formattedTime(lap))
@@ -694,7 +727,7 @@ struct StopwatchView: View {
                             .listRowBackground(bgColor)
                         }
                     } header: {
-                        ListSectionHeader(title: "本次计次", icon: "flag.fill")
+                        ListSectionHeader(title: String(localized: "lap.section"), icon: "flag.fill")
                     }
                 }
 
@@ -731,7 +764,7 @@ struct StopwatchView: View {
                             }
                         }
                     } header: {
-                        ListSectionHeader(title: "历史记录 (最近\(history.count)次)", icon: "clock.arrow.circlepath")
+                        ListSectionHeader(title: String(localized: "history \(history.count)"), icon: "clock.arrow.circlepath")
                     }
 
                     Section {
@@ -743,7 +776,7 @@ struct StopwatchView: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Text("清除全部历史记录")
+                                Text(String(localized: "clear.history"))
                                     .font(.subheadline)
                                 Spacer()
                             }
@@ -780,13 +813,14 @@ struct ListSectionHeader: View {
 struct SystemView: View {
     @Binding var isDarkMode: Bool
     @Binding var isFlatUI: Bool
+    @Binding var appLanguage: AppLanguage
 
     private var bgColor: Color { isDarkMode ? .neuBgDark : .neuBg }
     private var textColor: Color { isDarkMode ? .white.opacity(0.85) : .black.opacity(0.75) }
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("系统设置")
+            Text(String(localized: "system.settings"))
                 .font(.title2.bold())
                 .foregroundColor(textColor)
                 .padding(.top, 40)
@@ -794,17 +828,39 @@ struct SystemView: View {
 
             // Settings card
             VStack(spacing: 0) {
+                // Language selector
+                HStack {
+                    Image(systemName: "globe")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                        .frame(width: 36)
+                    Text(String(localized: "app.language"))
+                        .font(.body)
+                        .foregroundColor(textColor)
+                    Spacer()
+                    Picker("", selection: $appLanguage) {
+                        ForEach(AppLanguage.allCases, id: \.self) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(.blue)
+                }
+                .padding(16)
+
+                Divider().padding(.leading, 52)
+
                 // Dark mode
                 HStack {
                     Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
                         .font(.title2)
                         .foregroundColor(isDarkMode ? .indigo : .orange)
                         .frame(width: 36)
-                    Text("外观模式")
+                    Text(String(localized: "appearance"))
                         .font(.body)
                         .foregroundColor(textColor)
                     Spacer()
-                    Text(isDarkMode ? "深色" : "浅色")
+                    Text(isDarkMode ? String(localized: "dark") : String(localized: "light"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isDarkMode)
@@ -821,11 +877,11 @@ struct SystemView: View {
                         .font(.title2)
                         .foregroundColor(.teal)
                         .frame(width: 36)
-                    Text("扁平化风格")
+                    Text(String(localized: "flat.style"))
                         .font(.body)
                         .foregroundColor(textColor)
                     Spacer()
-                    Text(isFlatUI ? "开" : "关")
+                    Text(isFlatUI ? String(localized: "on") : String(localized: "off"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
                     Toggle("", isOn: $isFlatUI)
@@ -847,13 +903,13 @@ struct SystemView: View {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundColor(textColor.opacity(0.4))
-                    Text(isFlatUI ? "当前：扁平化风格" : "当前：新拟态风格")
+                    Text(isFlatUI ? String(localized: "current.flat") : String(localized: "current.neumorphism"))
                         .font(.caption)
                         .foregroundColor(textColor.opacity(0.4))
                 }
                 Text(isFlatUI
-                     ? "使用简洁的列表式布局，去除阴影和圆形按钮，以纯色色块和线条为主要视觉元素。"
-                     : "新拟态（Neumorphism）风格，通过双层阴影营造凸起与凹陷的质感，柔和而富有立体感。"
+                     ? String(localized: "desc.flat")
+                     : String(localized: "desc.neumorphism")
                 )
                 .font(.caption2)
                 .foregroundColor(textColor.opacity(0.35))
