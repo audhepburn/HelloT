@@ -119,53 +119,71 @@ struct WorldClockView: View {
     let isFlatUI: Bool
     @State private var selectedIndex: Int? = nil
     @State private var now = Date()
+    @Namespace private var ns
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            if isFlatUI {
-                // Flat: single column list
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
-                        FlatClockRow(
-                            city: city,
-                            date: now,
-                            index: index,
-                            isExpanded: selectedIndex == index
-                        )
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                selectedIndex = selectedIndex == index ? nil : index
+        ZStack {
+            // Grid / List
+            ScrollView {
+                if isFlatUI {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
+                            FlatClockRow(
+                                city: city,
+                                date: now,
+                                index: index,
+                                isExpanded: false
+                            )
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                    selectedIndex = index
+                                }
                             }
-                        }
-                        if index < cities.count - 1 {
-                            Divider().padding(.leading, 72)
-                        }
-                    }
-                }
-                .padding(.vertical, 8)
-            } else {
-                // Default: 2x2 grid
-                LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: 16),
-                    GridItem(.flexible(), spacing: 16)
-                ], spacing: 16) {
-                    ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
-                        ClockFaceView(
-                            city: city,
-                            date: now,
-                            isExpanded: selectedIndex == index,
-                            isDarkMode: isDarkMode
-                        )
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                selectedIndex = selectedIndex == index ? nil : index
+                            if index < cities.count - 1 {
+                                Divider().padding(.leading, 72)
                             }
                         }
                     }
+                    .padding(.vertical, 8)
+                } else {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ], spacing: 16) {
+                        ForEach(Array(cities.enumerated()), id: \.offset) { index, city in
+                            ClockFaceView(
+                                city: city,
+                                date: now,
+                                isExpanded: false,
+                                isDarkMode: isDarkMode
+                            )
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                    selectedIndex = index
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
                 }
-                .padding(16)
+            }
+
+            // Full-screen expanded overlay
+            if let idx = selectedIndex {
+                ClockExpandedView(
+                    city: cities[idx],
+                    index: idx,
+                    date: now,
+                    isDarkMode: isDarkMode,
+                    isFlatUI: isFlatUI
+                ) {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        selectedIndex = nil
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
         .onReceive(timer) { time in
@@ -174,13 +192,15 @@ struct WorldClockView: View {
     }
 }
 
-// MARK: - Flat Clock Row
+// MARK: - Expanded Clock Detail
 
-struct FlatClockRow: View {
+struct ClockExpandedView: View {
     let city: CityClock
-    let date: Date
     let index: Int
-    let isExpanded: Bool
+    let date: Date
+    let isDarkMode: Bool
+    let isFlatUI: Bool
+    let onDismiss: () -> Void
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -192,6 +212,16 @@ struct FlatClockRow: View {
     private var minute: Int { calendar.component(.minute, from: date) }
     private var second: Int { calendar.component(.second, from: date) }
 
+    private var hourAngle: Double {
+        Double(hour % 12) * 30 + Double(minute) * 0.5
+    }
+    private var minuteAngle: Double {
+        Double(minute) * 6 + Double(second) * 0.1
+    }
+    private var secondAngle: Double {
+        Double(second) * 6
+    }
+
     private var timeString: String {
         let fmt = DateFormatter()
         fmt.timeZone = city.timeZone
@@ -202,92 +232,263 @@ struct FlatClockRow: View {
     private var dateString: String {
         let fmt = DateFormatter()
         fmt.timeZone = city.timeZone
+        fmt.locale = Locale(identifier: "zh_CN")
+        fmt.dateFormat = "yyyy年M月d日 EEEE"
+        return fmt.string(from: date)
+    }
+
+    private var periodString: String {
+        hour < 6 ? "凌晨" : hour < 9 ? "早上" : hour < 12 ? "上午" : hour < 14 ? "中午" : hour < 18 ? "下午" : hour < 19 ? "傍晚" : "晚上"
+    }
+
+    private var utcOffset: String {
+        let offset = city.timeZone.secondsFromGMT(for: date)
+        let h = offset / 3600
+        let m = abs(offset % 3600) / 60
+        return m > 0 ? String(format: "UTC%+d:%02d", h, m) : String(format: "UTC%+d", h)
+    }
+
+    private var accent: Color { cityAccents[index] }
+    private var textColor: Color { isDarkMode ? .white : .black }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Dismiss hint
+            HStack {
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("点击任意位置关闭")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 16)
+
+            Spacer().frame(height: 20)
+
+            // Flag + City
+            Text(city.flag)
+                .font(.system(size: 56))
+
+            Text(city.name)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(textColor)
+                .padding(.top, 8)
+
+            Text("\(periodString) · \(utcOffset)")
+                .font(.subheadline)
+                .foregroundColor(accent)
+                .padding(.top, 4)
+
+            Spacer().frame(height: 24)
+
+            // Analog clock (large)
+            ZStack {
+                // Outer glow ring
+                Circle()
+                    .stroke(
+                        AngularGradient(
+                            colors: [.clear, accent.opacity(0.2), .clear],
+                            center: .center
+                        ),
+                        lineWidth: 3
+                    )
+
+                Circle()
+                    .fill(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
+                    .overlay(Circle().stroke(isDarkMode ? Color.white.opacity(0.15) : Color.black.opacity(0.1), lineWidth: 1.5))
+
+                // Hour numbers
+                ForEach(1...12, id: \.self) { i in
+                    Text("\(i)")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundColor(textColor.opacity(0.5))
+                        .offset(y: -110)
+                        .rotationEffect(.degrees(Double(i) * 30))
+                        .rotationEffect(.degrees(-Double(i) * 30)) // counter-rotate text
+                }
+
+                // Minute ticks (60)
+                ForEach(0..<60) { i in
+                    Rectangle()
+                        .fill(textColor.opacity(i % 5 == 0 ? 0.5 : 0.15))
+                        .frame(width: i % 5 == 0 ? 2 : 0.8,
+                               height: i % 5 == 0 ? 10 : 4)
+                        .offset(y: -136)
+                        .rotationEffect(.degrees(Double(i) * 6))
+                }
+
+                // Hour hand
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(textColor)
+                    .frame(width: 5, height: 68)
+                    .offset(y: -34)
+                    .rotationEffect(.degrees(hourAngle))
+
+                // Minute hand
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(textColor.opacity(0.85))
+                    .frame(width: 3.5, height: 95)
+                    .offset(y: -47.5)
+                    .rotationEffect(.degrees(minuteAngle))
+
+                // Second hand
+                Rectangle()
+                    .fill(accent)
+                    .frame(width: 1.5, height: 108)
+                    .offset(y: -54)
+                    .rotationEffect(.degrees(secondAngle))
+
+                // Second hand tail
+                Rectangle()
+                    .fill(accent)
+                    .frame(width: 1.5, height: 24)
+                    .offset(y: 12)
+                    .rotationEffect(.degrees(secondAngle))
+
+                // Center circle
+                Circle()
+                    .fill(accent)
+                    .frame(width: 8, height: 8)
+                Circle()
+                    .fill(isDarkMode ? .black : .white)
+                    .frame(width: 3, height: 3)
+            }
+            .frame(width: 280, height: 280)
+
+            Spacer().frame(height: 28)
+
+            // Digital time display
+            HStack(spacing: 6) {
+                VStack(spacing: 4) {
+                    Text("时")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(String(format: "%02d", hour))
+                        .font(.system(size: 36, weight: .thin, design: .monospaced))
+                        .foregroundColor(textColor)
+                        .frame(width: 54)
+                }
+
+                Text(":")
+                    .font(.system(size: 30, weight: .thin))
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 16)
+
+                VStack(spacing: 4) {
+                    Text("分")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(String(format: "%02d", minute))
+                        .font(.system(size: 36, weight: .thin, design: .monospaced))
+                        .foregroundColor(textColor)
+                        .frame(width: 54)
+                }
+
+                Text(":")
+                    .font(.system(size: 30, weight: .thin))
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 16)
+
+                VStack(spacing: 4) {
+                    Text("秒")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(String(format: "%02d", second))
+                        .font(.system(size: 36, weight: .thin, design: .monospaced))
+                        .foregroundColor(textColor)
+                        .frame(width: 54)
+                }
+            }
+
+            Spacer().frame(height: 20)
+
+            // Date info
+            Text(dateString)
+                .font(.body)
+                .foregroundColor(textColor.opacity(0.6))
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            Color(isDarkMode ? UIColor.systemBackground : UIColor.systemBackground)
+                .ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+        )
+        .background(
+            // Accent color top glow
+            VStack {
+                LinearGradient(
+                    colors: [accent.opacity(isDarkMode ? 0.12 : 0.06), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 200)
+                Spacer()
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        )
+    }
+}
+
+// MARK: - Flat Clock Row
+
+struct FlatClockRow: View {
+    let city: CityClock
+    let date: Date
+    let index: Int
+    let isExpanded: Bool // kept for API compat, unused
+
+    private var calendar: Calendar {
+        var cal = Calendar.current
+        cal.timeZone = city.timeZone
+        return cal
+    }
+
+    private var hour: Int { calendar.component(.hour, from: date) }
+    private var minute: Int { calendar.component(.minute, from: date) }
+    private var second: Int { calendar.component(.second, from: date) }
+
+    private var dateString: String {
+        let fmt = DateFormatter()
+        fmt.timeZone = city.timeZone
         fmt.dateFormat = "MM/dd EEE"
         fmt.locale = Locale(identifier: "zh_CN")
         return fmt.string(from: date)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                // Colored indicator bar
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(cityAccents[index])
-                    .frame(width: 4, height: 36)
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(cityAccents[index])
+                .frame(width: 4, height: 36)
 
-                // Flag
-                Text(city.flag)
-                    .font(.title2)
+            Text(city.flag)
+                .font(.title2)
 
-                // City + date
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(city.name)
-                        .font(.body.bold())
-                    Text(dateString)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                // Time
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(String(format: "%02d:%02d", hour, minute))
-                        .font(.system(size: 28, weight: .light, design: .monospaced))
-                    Text(String(format: ":%02d", second))
-                        .font(.system(size: 14, weight: .light, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(city.name)
+                    .font(.body.bold())
+                Text(dateString)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
 
-            // Expanded: digital detail
-            if isExpanded {
-                VStack(spacing: 8) {
-                    HStack(spacing: 24) {
-                        VStack(spacing: 2) {
-                            Text("时")
-                                .font(.caption2).foregroundColor(.secondary)
-                            Text("\(hour)")
-                                .font(.system(size: 32, weight: .thin, design: .monospaced))
-                        }
-                        .frame(maxWidth: .infinity)
+            Spacer()
 
-                        Text(":")
-                            .font(.system(size: 28, weight: .thin))
-                            .foregroundColor(.secondary)
-
-                        VStack(spacing: 2) {
-                            Text("分")
-                                .font(.caption2).foregroundColor(.secondary)
-                            Text(String(format: "%02d", minute))
-                                .font(.system(size: 32, weight: .thin, design: .monospaced))
-                        }
-                        .frame(maxWidth: .infinity)
-
-                        Text(":")
-                            .font(.system(size: 28, weight: .thin))
-                            .foregroundColor(.secondary)
-
-                        VStack(spacing: 2) {
-                            Text("秒")
-                                .font(.caption2).foregroundColor(.secondary)
-                            Text(String(format: "%02d", second))
-                                .font(.system(size: 32, weight: .thin, design: .monospaced))
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .padding(.horizontal, 40)
-                }
-                .padding(.bottom, 16)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(String(format: "%02d:%02d", hour, minute))
+                    .font(.system(size: 28, weight: .light, design: .monospaced))
+                Text(String(format: ":%02d", second))
+                    .font(.system(size: 14, weight: .light, design: .monospaced))
+                    .foregroundColor(.secondary)
             }
         }
-        .background(
-            isExpanded ? cityAccents[index].opacity(0.06) : Color.clear
-        )
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 }
 
