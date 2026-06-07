@@ -24,6 +24,7 @@
 
     },
     "app.language" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -46,6 +47,7 @@
       }
     },
     "appearance" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -68,6 +70,7 @@
       }
     },
     "city.beijing" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -90,6 +93,7 @@
       }
     },
     "city.newyork" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -112,6 +116,7 @@
       }
     },
     "city.paris" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -134,6 +139,7 @@
       }
     },
     "city.tokyo" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -156,6 +162,7 @@
       }
     },
     "clear.history" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -178,6 +185,7 @@
       }
     },
     "clock" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -200,6 +208,7 @@
       }
     },
     "current.flat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -222,6 +231,7 @@
       }
     },
     "current.neumorphism" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -244,6 +254,7 @@
       }
     },
     "dark" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -266,6 +277,7 @@
       }
     },
     "desc.flat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -288,6 +300,7 @@
       }
     },
     "desc.neumorphism" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -310,6 +323,7 @@
       }
     },
     "flat.style" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -354,10 +368,8 @@
         }
       }
     },
-    "history %lld" : {
-
-    },
     "hour" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -380,6 +392,7 @@
       }
     },
     "lang.chinese" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -402,6 +415,7 @@
       }
     },
     "lang.english" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -424,6 +438,7 @@
       }
     },
     "lang.german" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -446,6 +461,7 @@
       }
     },
     "lang.system" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -468,6 +484,7 @@
       }
     },
     "lap" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -512,10 +529,8 @@
         }
       }
     },
-    "lap.count %lld" : {
-
-    },
     "lap.section" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -538,6 +553,7 @@
       }
     },
     "light" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -560,6 +576,7 @@
       }
     },
     "minute" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -582,6 +599,7 @@
       }
     },
     "off" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -604,6 +622,7 @@
       }
     },
     "on" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -626,6 +645,7 @@
       }
     },
     "period.afternoon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -648,6 +668,7 @@
       }
     },
     "period.am" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -670,6 +691,7 @@
       }
     },
     "period.dawn" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -692,6 +714,7 @@
       }
     },
     "period.dusk" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -714,6 +737,7 @@
       }
     },
     "period.evening" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -736,6 +760,7 @@
       }
     },
     "period.morning" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -758,6 +783,7 @@
       }
     },
     "period.noon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -780,6 +806,7 @@
       }
     },
     "reset" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -802,6 +829,7 @@
       }
     },
     "second" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -824,6 +852,7 @@
       }
     },
     "start" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -846,6 +875,7 @@
       }
     },
     "stop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -868,6 +898,7 @@
       }
     },
     "stopwatch" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -890,6 +921,7 @@
       }
     },
     "system" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -912,6 +944,7 @@
       }
     },
     "system.settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

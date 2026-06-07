@@ -656,6 +656,24 @@ struct StopwatchView: View {
         return String(format: "%02d:%02d.%02d", m, s, ms)
     }
 
+    private func formatDate(_ date: Date) -> String {
+        let raw = UserDefaults.standard.string(forKey: "appLanguage") ?? ""
+        let id: String
+        switch raw {
+        case "zh-Hans": id = "zh-Hans"
+        case "en":      id = "en"
+        case "de":      id = "de"
+        default:
+            let code = Locale.current.language.languageCode?.identifier ?? "en"
+            id = (code == "zh") ? "zh-Hans" : code
+        }
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: id)
+        fmt.dateStyle = .medium
+        fmt.timeStyle = .short
+        return fmt.string(from: date)
+    }
+
     private func saveToHistory(_ duration: TimeInterval) {
         let record = StopwatchRecord(duration: duration, date: Date())
         history.insert(record, at: 0)
@@ -767,7 +785,7 @@ struct StopwatchView: View {
                                         .foregroundColor(textColor)
                                         .monospacedDigit()
                                         .font(.system(.body, design: .monospaced))
-                                    Text(record.date.formatted(date: .abbreviated, time: .shortened))
+                                    Text(formatDate(record.date))
                                         .font(.caption2)
                                         .foregroundColor(textColor.opacity(0.4))
                                 }
