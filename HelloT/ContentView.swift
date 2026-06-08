@@ -874,13 +874,14 @@ struct SystemView: View {
                     Image(systemName: "globe")
                         .font(.title2)
                         .foregroundColor(.blue)
-                        .frame(width: 36)
+                        .frame(width: 32)
                     Text(L("app.language"))
                         .font(.body)
                         .foregroundColor(textColor)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer()
+                        .minimumScaleFactor(0.5)
+                        .layoutPriority(1)
+                    Spacer(minLength: 4)
                     Picker("", selection: $appLanguage) {
                         ForEach(AppLanguage.allCases, id: \.self) { lang in
                             Text(lang.displayName).tag(lang)
@@ -888,54 +889,62 @@ struct SystemView: View {
                     }
                     .pickerStyle(.menu)
                     .tint(.blue)
+                    .frame(maxWidth: 160)
                 }
-                .padding(16)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
 
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, 46)
 
                 // Dark mode
                 HStack {
                     Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
                         .font(.title2)
                         .foregroundColor(isDarkMode ? .indigo : .orange)
-                        .frame(width: 36)
+                        .frame(width: 32)
                     Text(L("appearance"))
                         .font(.body)
                         .foregroundColor(textColor)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer()
+                        .minimumScaleFactor(0.5)
+                        .layoutPriority(1)
+                    Spacer(minLength: 4)
                     Text(isDarkMode ? L("dark") : L("light"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
+                        .lineLimit(1)
                     Toggle("", isOn: $isDarkMode)
                         .labelsHidden()
                         .tint(isDarkMode ? .indigo : .orange)
                 }
-                .padding(16)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
 
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, 46)
 
                 // Flat UI toggle
                 HStack {
                     Image(systemName: isFlatUI ? "square.split.1x2" : "app.fill")
                         .font(.title2)
                         .foregroundColor(.teal)
-                        .frame(width: 36)
+                        .frame(width: 32)
                     Text(L("flat.style"))
                         .font(.body)
                         .foregroundColor(textColor)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer()
+                        .minimumScaleFactor(0.5)
+                        .layoutPriority(1)
+                    Spacer(minLength: 4)
                     Text(isFlatUI ? L("on") : L("off"))
                         .font(.subheadline)
                         .foregroundColor(textColor.opacity(0.5))
+                        .lineLimit(1)
                     Toggle("", isOn: $isFlatUI)
                         .labelsHidden()
                         .tint(.teal)
                 }
-                .padding(16)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
             }
             .background(
                 RoundedRectangle(cornerRadius: 20)
