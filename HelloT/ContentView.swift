@@ -878,6 +878,8 @@ struct SystemView: View {
                     Text(L("app.language"))
                         .font(.body)
                         .foregroundColor(textColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     Spacer()
                     Picker("", selection: $appLanguage) {
                         ForEach(AppLanguage.allCases, id: \.self) { lang in
@@ -900,6 +902,8 @@ struct SystemView: View {
                     Text(L("appearance"))
                         .font(.body)
                         .foregroundColor(textColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     Spacer()
                     Text(isDarkMode ? L("dark") : L("light"))
                         .font(.subheadline)
@@ -921,6 +925,8 @@ struct SystemView: View {
                     Text(L("flat.style"))
                         .font(.body)
                         .foregroundColor(textColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     Spacer()
                     Text(isFlatUI ? L("on") : L("off"))
                         .font(.subheadline)
