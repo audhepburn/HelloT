@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseAuth
+import GoogleSignIn
 
 // MARK: - Neumorphism Helpers
 
@@ -974,11 +976,59 @@ struct SystemView: View {
             .padding(.horizontal, 24)
             .padding(.top, 12)
 
+            // Account section
+            if let user = Auth.auth().currentUser {
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "person.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                            .frame(width: 32)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(user.displayName ?? user.email ?? "")
+                                .font(.body)
+                                .foregroundColor(textColor)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(user.email ?? "")
+                                .font(.caption)
+                                .foregroundColor(textColor.opacity(0.4))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    
+                    Divider().padding(.leading, 46)
+                    
+                    Button {
+                        try? Auth.auth().signOut()
+                        GIDSignIn.sharedInstance.signOut()
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.right.square")
+                                .foregroundColor(.red)
+                            Text(L("logout"))
+                                .foregroundColor(.red)
+                                .font(.body)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(bgColor)
+                )
+                .neuRaised(isDark: isDarkMode, radius: 10, offset: 7)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+            }
+
             Spacer()
         }
     }
-}
-
-#Preview {
-    ContentView()
 }

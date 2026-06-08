@@ -1,5 +1,8 @@
 build/
+.spm-packages/
 .DS_Store
+*.xcuserstate
+xcuserdata/
 *.xcuserstate
 xcuserdata/
 DerivedData/

@@ -6,12 +6,23 @@
 //
 
 import SwiftUI
+import FirebaseCore
 
 @main
 struct HelloTApp: App {
+    @StateObject private var authManager = AuthManager.shared
+    
+    init() {
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if authManager.isAuthenticated {
+                ContentView()
+            } else {
+                LoginView()
+            }
         }
     }
 }
