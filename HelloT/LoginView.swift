@@ -119,7 +119,11 @@ struct LoginView: View {
 
     private var googleSignInButton: some View {
         Button {
-            AuthManager.shared.signInWithGoogle()
+            AuthManager.shared.signInWithGoogle { error in
+                if let error {
+                    errorMessage = error.localizedDescription
+                }
+            }
         } label: {
             HStack(spacing: 12) {
                 // "G" 图标

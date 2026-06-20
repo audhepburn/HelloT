@@ -87,25 +87,57 @@ final class AuthManager: ObservableObject {
 
     // MARK: - Sign in with Google
 
+    /// Google 登录是否可用（检查 GoogleService-Info.plist 中是否有 CLIENT_ID）
+    var isGoogleSignInAvailable: Bool {
+        guard let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+              let dict = NSDictionary(contentsOfFile: plistPath),
+              let _ = dict.object(forKey: "CLIENT_ID") as? String else {
+            return false
+        }
+        return true
+    }
+
     /// 使用 Google 登录，获取 idToken + accessToken 后完成 Firebase 认证
-    func signInWithGoogle() {
+    /// - Parameter completion: 结果回调 (error)
+    func signInWithGoogle(completion: @escaping (Error?) -> Void) {
+        // 检查 Google 配置是否存在
+        guard let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+              let dict = NSDictionary(contentsOfFile: plistPath),
+              let clientID = dict.object(forKey: "CLIENT_ID") as? String else {
+            print("[AuthManager] Google 登录失败：GoogleService-Info.plist 缺少 CLIENT_ID，请在 Firebase Console 启用 Google Sign-In")
+            completion(NSError(domain: "AuthManager", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "Google Sign-In not configured. Enable Google provider in Firebase Console."
+            ]))
+            return
+        }
+
+        // 用代码方式配置 GoogleSignIn（不依赖 Info.plist URL Scheme）
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+
         // 获取当前 presenting ViewController
         guard let presentingVC = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap({ $0.windows })
             .first(where: { $0.isKeyWindow })?.rootViewController else {
             print("[AuthManager] Google 登录失败：无法获取 presenting ViewController")
+            completion(NSError(domain: "AuthManager", code: -2, userInfo: [
+                NSLocalizedDescriptionKey: "Cannot find presenting ViewController"
+            ]))
             return
         }
 
         GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC) { [weak self] result, error in
             if let error {
                 print("[AuthManager] Google 登录失败：\(error.localizedDescription)")
+                completion(error)
                 return
             }
             guard let result,
                   let idToken = result.user.idToken?.tokenString else {
                 print("[AuthManager] Google 登录失败：无法获取 idToken")
+                completion(NSError(domain: "AuthManager", code: -3, userInfo: [
+                    NSLocalizedDescriptionKey: "Cannot get idToken"
+                ]))
                 return
             }
 
@@ -117,11 +149,13 @@ final class AuthManager: ObservableObject {
             Auth.auth().signIn(with: credential) { authResult, error in
                 if let error {
                     print("[AuthManager] Firebase Google 认证失败：\(error.localizedDescription)")
+                    completion(error)
                     return
                 }
                 if let authResult {
                     self?.saveUserToFirestore(authResult.user)
                 }
+                completion(nil)
             }
         }
     }
