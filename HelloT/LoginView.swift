@@ -102,7 +102,11 @@ struct LoginView: View {
             switch result {
             case .success(let authorization):
                 if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                    AuthManager.shared.signInWithApple(credential: credential)
+                    AuthManager.shared.signInWithApple(credential: credential) { error in
+                        if let error {
+                            errorMessage = error.localizedDescription
+                        }
+                    }
                 }
             case .failure(let error):
                 if (error as? ASAuthorizationError)?.code != .canceled {

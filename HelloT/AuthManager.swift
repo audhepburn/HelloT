@@ -56,17 +56,27 @@ final class AuthManager: ObservableObject {
     }
 
     /// 处理 Apple 登录成功后的凭据，完成 Firebase 认证
-    /// - Parameter credential: ASAuthorizationAppleIDCredential
-    func signInWithApple(credential: ASAuthorizationAppleIDCredential) {
+    /// - Parameters:
+    ///   - credential: ASAuthorizationAppleIDCredential
+    ///   - completion: 结果回调 (error)
+    func signInWithApple(credential: ASAuthorizationAppleIDCredential, completion: @escaping (Error?) -> Void) {
         guard let nonce = currentNonce else {
             print("[AuthManager] Apple 登录失败：缺少 nonce")
+            completion(NSError(domain: "AuthManager", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "Missing nonce"
+            ]))
             return
         }
         guard let appleIDToken = credential.identityToken,
               let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
             print("[AuthManager] Apple 登录失败：无法读取 identityToken")
+            completion(NSError(domain: "AuthManager", code: -2, userInfo: [
+                NSLocalizedDescriptionKey: "Cannot read identityToken"
+            ]))
             return
         }
+
+        print("[AuthManager] Apple 登录：idToken 长度=\(idTokenString.count), nonce 已设置")
 
         let firebaseCredential = OAuthProvider.appleCredential(
             withIDToken: idTokenString,
@@ -77,11 +87,19 @@ final class AuthManager: ObservableObject {
         Auth.auth().signIn(with: firebaseCredential) { [weak self] result, error in
             if let error {
                 print("[AuthManager] Apple 登录失败：\(error.localizedDescription)")
+                completion(error)
                 return
             }
-            guard let result else { return }
+            guard let result else {
+                completion(NSError(domain: "AuthManager", code: -3, userInfo: [
+                    NSLocalizedDescriptionKey: "No auth result"
+                ]))
+                return
+            }
+            print("[AuthManager] Apple 登录成功：uid=\(result.user.uid)")
             self?.saveUserToFirestore(result.user)
             self?.currentNonce = nil
+            completion(nil)
         }
     }
 
